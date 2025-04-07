@@ -1,1 +1,0 @@
-# Rubidium87-MOTtoDIPOLE-Modelling
