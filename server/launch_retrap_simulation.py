@@ -1,7 +1,7 @@
 import pandas as pd
 
 from rb87_mot_model import simulate_mot, plot_results as mot_graphs
-from rb87_retrap_model import simulate_retrap
+from rb87_retrap_model import simulate_retrap, plot_results as retrap_graphs
 
 # Запуск моделирования МОЛ
 
@@ -27,7 +27,25 @@ data = {
 df = pd.DataFrame(data)
 
 # Сохраняем в CSV файл
-df.to_csv('mot_simulation_data.csv', index=False)
+df.to_csv('../results_postprocessing/mot_simulation_results/mot_simulation_data.csv', index=False)
+print("Данные сохранены в '../results_postprocessing/mot_simulation_results/mot_simulation_data.csv'")
 
-print("Данные сохранены в 'mot_simulation_data.csv'")
+import numpy as np
 
+# Используем финальные позиции и скорости из симуляции МОЛ
+final_positions = positions[-1]
+final_velocities = velocities[-1]
+
+# Запуск симуляции перезахвата для гауссовой ловушки
+_, _, _, T_classical, T_quantum = simulate_retrap(
+    final_positions,
+    final_velocities,
+    potential_type='gaussian',
+    trap_radius=10e-6,
+    trap_depth=1e-27
+)
+
+# Построение графиков для перезахвата
+retrap_graphs(
+    [times[-1]], [T_classical], [T_quantum]
+)
