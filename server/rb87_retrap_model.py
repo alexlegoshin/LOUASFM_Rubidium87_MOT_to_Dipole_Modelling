@@ -41,7 +41,7 @@ def is_trapped(x, v, potential_fn, U0):
     return True
 
 
-def simulate_retrap(positions, velocities, potential_type):
+def simulate_retrap(positions, velocities, potential_type, trap_radius, trap_depth):
     """
     Основная функция симуляции перезахвата атомов.
     """
@@ -62,9 +62,24 @@ def simulate_retrap(positions, velocities, potential_type):
 
     for i in range(n_atoms):
         if not is_trapped(positions[i], velocities[i], potential_fn, U0):
-            trapped_flags[i] = False
+            trapped_flags[i] = False  # Атомы, покинувшие ловушку
 
-    return trapped_flags
+            # Моделируем перезахват с учётом туннелирования
+            # Если атом выходит за пределы ловушки, проверим вероятность его возвращения
+            if np.abs(positions[i]) > trap_radius:
+                kinetic_energy = 0.5 * mass_Rb * velocities[i]**2
+                potential_energy = potential_fn(positions[i])
+                total_energy = kinetic_energy + potential_energy
+
+                if total_energy < 0:  # Атом может вернуться
+                    barrier_energy = abs(U0 - total_energy)
+                    tunneling_prob = np.exp(-tunneling_prefactor * barrier_width * np.sqrt(2 * mass_Rb * barrier_energy) / hbar)
+                    if np.random.rand() < tunneling_prob:
+                        positions[i] = np.random.uniform(-trap_radius, trap_radius)  # возвращаем в ловушку
+                        velocities[i] = np.random.normal(0, np.sqrt(k * 300e-6 / mass_Rb))  # охлаждаем
+                        trapped_flags[i] = True  # Отмечаем как перезахваченного
+
+    return trapped_flags, positions, velocities
 
 
 # Пример использования
@@ -73,5 +88,6 @@ if __name__ == "__main__":
     positions = np.random.normal(0, trap_radius * 2, 1000)
     velocities = np.random.normal(0, np.sqrt(k * 300e-6 / mass_Rb), 1000)
 
-    result = simulate_retrap(positions, velocities)
+    # Перезахват
+    result, new_positions, new_velocities = simulate_retrap(positions, velocities, potential_type='gaussian', trap_radius=trap_radius, trap_depth=trap_depth)
     print(f"Перезахвачено {np.sum(result)} из {len(result)} атомов.")
