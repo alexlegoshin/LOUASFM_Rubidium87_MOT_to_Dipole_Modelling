@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import k, c, hbar, pi
 import time
+import os
 
 # Физические параметры
 mass_Rb = 87 * 1.66e-27  # кг, масса атома Rb-87
@@ -26,10 +27,10 @@ repumper_wavelength = 780.244e-9  # длина волны репампера
 repumper_effect = 0.6  # коэффициент влияния репампера на переходы
 
 # Параметры симуляции
-atoms_quantity = 1000  # Число атомов — в реальности 500 000
-nsim = 7  # Количество симуляций
+atoms_quantity = 100  # Число атомов — в реальности 500 000
+nsim = 3  # Количество симуляций
 timesim = 1  # Период симуляции
-dtsim = 1e-6  # Шаг симуляции (в секундах)
+dtsim = 1e-4  # Шаг симуляции (в секундах)
 itera = timesim / dtsim
 
 # Параметры переходов между уровнями (примерные значения)
@@ -78,7 +79,8 @@ def repumper_effect_on_levels(levels, velocities, I_repumper, temperature, delta
     k_L_eff_repumper = 2 * np.pi / (repumper_wavelength * (1 + np.random.normal(0, delta_wavelength)))
 
     # Вероятность перехода с F=1 на F=2 (основной эффект репампера)
-    transition_prob = repumper_effect * I_repumper / I_s * np.exp(-velocities ** 2 / (2 * k * temperature / mass_Rb))
+    temp_safe = max(temperature, 1e-12)  # Устанавливаем минимальное значение температуры
+    transition_prob = repumper_effect * I_repumper / I_s * np.exp(-velocities ** 2 / (2 * k * temp_safe / mass_Rb))
 
     # Создаём копию массива уровней
     level_transition_prob = np.copy(levels)
@@ -203,7 +205,7 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
             levels_distributions.append(level_distribution)
 
             # Оценка прогресса с учётом времени
-            if len(times) > 100000 and i % (len(times) // 100000) == 0:
+            if len(times) > 1000 and i % (len(times) // 1000) == 0:
                 elapsed_time = time.time() - start_time  # прошедшее время
                 time_per_iteration = elapsed_time / (i + 1)  # время на одну итерацию
                 time_remaining = time_per_iteration * (len(times) - i) + \
@@ -240,6 +242,7 @@ def plot_results(times, positions, velocities, temperatures, avg_level_populatio
     """Графики распределений, температуры и времени жизни ловушки."""
 
     save_folder = "../results_postprocessing/mot_simulation_results"
+    os.makedirs(save_folder, exist_ok=True)
 
     # Позиции атомов на разных временных моментах
     fig, ax = plt.subplots(1, 2, figsize=(22, 6))
