@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.constants import k, hbar, pi
-from rb87_gauss_potention_well_model import U_gauss
-from rb87_lattice_potention_well_model import U_lattice  # Можно подменить позже
+from rb87_gauss_potential_well_model import U_gauss
+from rb87_lattice_potential_well_model import U_lattice
 
 # Параметры атома
 mass_Rb = 87 * 1.66e-27  # кг
@@ -41,7 +41,7 @@ def is_trapped(x, v, potential_fn, U0):
     return True
 
 
-def simulate_retrap(positions, velocities, potential_type='gaussian'):
+def simulate_retrap(positions, velocities, potential_type):
     """
     Основная функция симуляции перезахвата атомов.
     """

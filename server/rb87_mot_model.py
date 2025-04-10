@@ -238,9 +238,11 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
 
 def plot_results(times, positions, velocities, temperatures, avg_level_populations, avg_velocity_distributions):
     """Графики распределений, температуры и времени жизни ловушки."""
-    fig, ax = plt.subplots(1, 2, figsize=(22, 6))
+
+    save_folder = "../results_postprocessing/mot_simulation_results"
 
     # Позиции атомов на разных временных моментах
+    fig, ax = plt.subplots(1, 2, figsize=(22, 6))
     ax[0].hist(positions[0] * 1e3, bins=50, density=True, alpha=0.7, color='r', label="0%")
     ax[0].hist(positions[len(positions) // 5] * 1e3, bins=50, density=True, alpha=0.7, color='orange', label="20%")
     ax[0].hist(positions[len(positions) // 2] * 1e3, bins=50, density=True, alpha=0.7, color='y', label="50%")
@@ -251,7 +253,6 @@ def plot_results(times, positions, velocities, temperatures, avg_level_populatio
     ax[0].set_title(f"Положение атомов в моменты 0%, 20%, 50%, 80%, 100% периода моделирования")
     ax[0].legend()
 
-    # Скорости атомов на разных временных моментах
     ax[1].hist(velocities[0], bins=50, density=True, alpha=0.7, color='r', label="0%")
     ax[1].hist(velocities[len(velocities) // 5], bins=50, density=True, alpha=0.7, color='orange', label="20%")
     ax[1].hist(velocities[len(velocities) // 2], bins=50, density=True, alpha=0.7, color='y', label="50%")
@@ -262,19 +263,20 @@ def plot_results(times, positions, velocities, temperatures, avg_level_populatio
     ax[1].set_title(f"Динамика атомов в моменты 0%, 20%, 50%, 80%, 100% периода моделирования")
     ax[1].legend()
 
-    fig, ax = plt.subplots(1, 1, figsize=(22, 6))
+    plt.tight_layout()
+    plt.savefig(f'{save_folder}/positions_velocities.png')
 
     # Температура в зависимости от времени
+    fig, ax = plt.subplots(1, 1, figsize=(22, 6))
     ax.plot(times * 1e6, temperatures, color='g')
     ax.set_xlabel("Время (μs)")
     ax.set_ylabel("Средняя температура (K)")
     ax.set_title("Зависимость средней температуры захваченных в МОЛ атомов от времени")
-
-    plt.show()
-
-    fig, ax = plt.subplots(1, 2, figsize=(22, 6))
+    plt.tight_layout()
+    plt.savefig(f'{save_folder}/temperature_vs_time.png')
 
     # Заселённости уровней
+    fig, ax = plt.subplots(1, 2, figsize=(22, 6))
     level_1_population = avg_level_populations[:, 0]
     level_2_population = avg_level_populations[:, 1]
     level_3_population = avg_level_populations[:, 2]
@@ -297,7 +299,8 @@ def plot_results(times, positions, velocities, temperatures, avg_level_populatio
     ax[1].set_title('Динамика атомов по уровням в зависимости от времени')
     ax[1].legend()
 
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(f'{save_folder}/level_populations_and_velocities.png')
 
     # Распределение скоростей для каждого уровня
     fig_velocities, ax_velocities = plt.subplots(1, 3, figsize=(22, 6))
@@ -317,4 +320,7 @@ def plot_results(times, positions, velocities, temperatures, avg_level_populatio
         ax_velocities[i].set_title(f"Распределение скоростей для Уровня {i + 1}")
         ax_velocities[i].legend()
 
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(f'{save_folder}/velocity_distributions.png')
+
+    plt.close('all')  # Закрываем все графики, чтобы освободить память
