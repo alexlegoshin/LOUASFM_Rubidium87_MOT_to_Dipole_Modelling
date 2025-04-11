@@ -19,27 +19,30 @@ f = 50e-3  # фокусное расстояние, м
 z = s - f
 
 # ABCD-матрица
-z_R = np.pi * w_0_input**2 / lambda_laser
-M = np.array([[1, z], [0, 1]]) @ np.array([[1, 0], [-1/f, 1]])
+z_R = np.pi * w_0_input ** 2 / lambda_laser
+M = np.array([[1, z], [0, 1]]) @ np.array([[1, 0], [-1 / f, 1]])
 q_in = 1j * z_R
-q_out = (M[0,0]*q_in + M[0,1]) / (M[1,0]*q_in + M[1,1])
-w_0 = np.sqrt(-lambda_laser / (np.pi * np.imag(1/q_out)))
-z_R = np.pi * w_0**2 / lambda_laser
+q_out = (M[0, 0] * q_in + M[0, 1]) / (M[1, 0] * q_in + M[1, 1])
+w_0 = np.sqrt(-lambda_laser / (np.pi * np.imag(1 / q_out)))
+z_R = np.pi * w_0 ** 2 / lambda_laser
+
 
 # --- Потенциал ---
 def I_gauss(r: float, z: float) -> float:
-    w_z = w_0 * np.sqrt(1 + (z / z_R)**2)
-    return (2 * P / (np.pi * w_z**2)) * np.exp(-2 * r**2 / w_z**2)
+    w_z = w_0 * np.sqrt(1 + (z / z_R) ** 2)
+    return (2 * P / (np.pi * w_z ** 2)) * np.exp(-2 * r ** 2 / w_z ** 2)
+
 
 def U_gauss(x):
     r = 0  # нас интересует ось, т.е. r = 0
     z = x  # явно обозначаем, что x — это продольная координата
     I = I_gauss(r, z)
-    prefactor = (3 * np.pi * c**2 * Gamma) / (2 * omega_0**3)
+    prefactor = (3 * np.pi * c ** 2 * Gamma) / (2 * omega_0 ** 3)
     U = prefactor * (1 / delta + 1 / (omega + delta)) * I
     return U / (k_B * 1e-6)  # мкК
 
-# --- Визуализация (опц.) ---
+
+# --- Визуализация (debug.) ---
 if __name__ == "__main__":
     z_vals = np.linspace(-3e-3, 3e-3, 500)
     U_vals = [U_gauss(z) for z in z_vals]

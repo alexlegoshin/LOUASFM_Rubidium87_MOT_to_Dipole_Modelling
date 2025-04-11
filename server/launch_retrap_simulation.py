@@ -13,17 +13,17 @@ np.savetxt('../results_postprocessing/mot_simulation_results/times.csv', times, 
 np.savetxt('../results_postprocessing/mot_simulation_results/positions.csv', positions, delimiter=',')
 np.savetxt('../results_postprocessing/mot_simulation_results/velocities.csv', velocities, delimiter=',')
 np.savetxt('../results_postprocessing/mot_simulation_results/temperatures.csv', temperatures, delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/avg_level_populations.csv', avg_level_populations, delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/avg_velocity_distributions.csv', avg_velocity_distributions, delimiter=',')
-
-print(f'MOT graphs done')
+np.savetxt('../results_postprocessing/mot_simulation_results/avg_level_populations.csv', avg_level_populations,
+           delimiter=',')
+np.savetxt('../results_postprocessing/mot_simulation_results/avg_velocity_distributions.csv',
+           avg_velocity_distributions, delimiter=',')
 
 # Используем финальные позиции и скорости из симуляции МОЛ
 final_positions = positions[-1]
 final_velocities = velocities[-1]
 
 # Запуск симуляции перезахвата для гауссовой ловушки
-_, _, _, T_classical, T_quantum = simulate_retrap(
+_, _, _, T_classical_list, T_quantum_list = simulate_retrap(
     final_positions,
     final_velocities,
     potential_type='gaussian',
@@ -32,6 +32,4 @@ _, _, _, T_classical, T_quantum = simulate_retrap(
 )
 
 # Построение графиков для перезахвата
-retrap_graphs(
-    [times[-1]], [T_classical], [T_quantum]
-)
+retrap_graphs(times, T_classical_list, T_quantum_list)

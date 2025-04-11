@@ -215,7 +215,7 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
                 time_struct = time.gmtime(time_remaining % 86400)  # Преобразуем остаток времени
                 formatted_time = time.strftime('%H:%M:%S', time_struct)
 
-                print(f"\rПрогресс: симуляция {_ + 1}/{n_simulations}, "
+                print(f"\rПрогресс (МОЛ): симуляция {_ + 1}/{n_simulations}, "
                       f"актуальная симуляция завершена на {100 * i / len(times):.3f}%, "
                       f"примерное время до полного завершения моделирования: {int(days)} дней, {formatted_time}",
                       end='')
@@ -233,7 +233,8 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
     avg_level_populations = np.mean(level_populations_all, axis=0)
     avg_velocity_distributions = np.mean(velocity_distributions_all, axis=0)
 
-    print(f"\rПрогресс: 100%, моделирование завершено")
+    print(f"\rПрогресс (МОЛ): 100%, моделирование завершено")
+    print(f"Температура облака: {avg_temperatures[-1]:.10f}К")
 
     return times, avg_positions, avg_velocities, avg_temperatures, avg_level_populations, avg_velocity_distributions
 
@@ -311,17 +312,16 @@ def plot_results(times, positions, velocities, temperatures, avg_level_populatio
     for i, level_velocities in enumerate([level_1_velocities, level_2_velocities, level_3_velocities]):
         for j, time_point in enumerate([0, len(times) // 5, len(times) // 2, 4 * len(times) // 5, len(times) - 1]):
             # Фильтрация NaN значений
-            clean_velocities = level_velocities[time_point]
-            clean_velocities = clean_velocities[~np.isnan(clean_velocities)]  # удаляем NaN значения
+            clean_velocities = np.array([v for v in level_velocities if not np.isnan(v)])
 
             # Строим гистограмму только с чистыми данными
-            ax_velocities[i].hist(clean_velocities, bins=50, density=True, alpha=0.7, label=f"{j * 20}%",
-                                  color=['r', 'orange', 'y', 'g', 'b'][j])
+            if len(clean_velocities) > 0:
+                ax_velocities[i].hist(clean_velocities, bins=50, density=True, alpha=0.7, label=f"{j * 20}%",
+                                      color=['r', 'orange', 'y', 'g', 'b'][j])
 
         ax_velocities[i].set_xlabel("Скорость (м/с)")
         ax_velocities[i].set_ylabel("Плотность")
         ax_velocities[i].set_title(f"Распределение скоростей для Уровня {i + 1}")
-        ax_velocities[i].legend()
 
     plt.tight_layout()
     plt.savefig(f'{save_folder}/velocity_distributions.png')

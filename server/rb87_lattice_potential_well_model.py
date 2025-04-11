@@ -13,19 +13,22 @@ P = 2  # Вт
 w_0 = 243e-6  # м
 k_laser = 2 * np.pi / lambda_laser
 
+
 # --- Потенциал ---
 def I_lattice(x: float) -> float:
-    envelope = np.exp(-2 * x**2 / w_0**2)
-    standing_wave = np.cos(k_laser * x)**2
-    return (2 * P / (np.pi * w_0**2)) * envelope * standing_wave
+    envelope = np.exp(-2 * x ** 2 / w_0 ** 2)
+    standing_wave = np.cos(k_laser * x) ** 2
+    return (2 * P / (np.pi * w_0 ** 2)) * envelope * standing_wave
+
 
 def U_lattice(x: float) -> float:
     I = I_lattice(x)
-    prefactor = (3 * np.pi * c**2 * Gamma) / (2 * omega_0**3)
+    prefactor = (3 * np.pi * c ** 2 * Gamma) / (2 * omega_0 ** 3)
     U = prefactor * (1 / delta - 1 / (2 * omega_0 + delta)) * I
     return U / (k_B * 1e-6)  # мкК
 
-# --- Визуализация (опц.) ---
+
+# --- Визуализация (debug.) ---
 if __name__ == "__main__":
     x_vals = np.linspace(-5e-3, 5e-3, 2000)
     U_vals = [U_lattice(x) for x in x_vals]
