@@ -23,7 +23,7 @@ final_positions = positions[-1]
 final_velocities = velocities[-1]
 
 # Запуск симуляции перезахвата для гауссовой ловушки
-_, _, _, T_classical_list, T_quantum_list = simulate_retrap(
+_, positions, velocities, T_classical_list, T_quantum_list = simulate_retrap(
     final_positions,
     final_velocities,
     potential_type='gaussian',
@@ -33,3 +33,7 @@ _, _, _, T_classical_list, T_quantum_list = simulate_retrap(
 
 # Построение графиков для перезахвата
 retrap_graphs(times, T_classical_list, T_quantum_list)
+
+# Сохраняем финальные позиции и скорости
+np.savetxt('../results_postprocessing/dipole_simulation_results/positions.csv', positions, delimiter=',')
+np.savetxt('../results_postprocessing/dipole_simulation_results/velocities.csv', velocities, delimiter=',')
