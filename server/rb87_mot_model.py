@@ -8,9 +8,9 @@ import os
 mass_Rb = 87 * 1.66e-27  # кг, масса атома Rb-87
 wavelength = 780.241e-9  # м, длина волны охлаждающего лазера
 k_L = 2 * pi / wavelength  # волновой вектор
-Gamma = 2 * pi * 6.07e6  # Гц, естественная ширина перехода
+Gamma = 2 * pi * 6.07e6  # Реальное значение для рубидия-87
 delta = -Gamma / 2  # Детюнинг охлаждающего лазера в рад/с (отрицательный для охлаждения) TODO: сделать зависимой от мощности лазера и т. п.
-P_laser = (8e1) / 6  # Вт, мощность одного пучка
+P_laser = 0.1  # Вт, тестовая мощность одного пучка для реалистичного s
 beam_diameter = 9e-3  # м, диаметр пучка
 I_s = 25  # Вт/м^2, насыщенность перехода
 T0 = 360.00  # К, начальная температура атомов
@@ -37,10 +37,10 @@ itera = timesim / dtsim
 # Параметры переходов между уровнями (примерные значения)
 transition_probabilities = {
     (0, 1): 5e-21,  # Переход с уровня 0 (F=1) на уровень 1 (F=2)
-    (1, 2): 0.6,  # Переход с уровня 1 (F=2) на уровень 2 (F=3)
+    # (1, 2): 0.6,  # Удалено: возбуждение F=2 -> F'=3 теперь только через лазер
     (2, 3): 5e-21,  # Переход с уровня 2 (F=3) на уровень 3 (темновой)
-    (1, 0): 1e-7,  # Переход с уровня 1 (F=2) на уровень 0 (F=1)
-    (2, 1): 0.1,  # Переход с уровня 2 (F=3) на уровень 1 (F=2)
+    (1, 0): 0,  # Переход с уровня 1 (F=2) на уровень 0 (F=1) — временно отключено
+    # (2, 1): 0.1,  # Удалено: спад F'=3 -> F=2 теперь только через спонтанный спад
     (3, 2): 5e-21,  # Переход с уровня 3 (темновой) на уровень 2 (F=3)
 }
 
@@ -127,7 +127,8 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
     for sim_index in range(n_simulations):  # многократное моделирование для усреднения
         velocities = np.random.normal(0, np.sqrt(k * T0 / mass_Rb), n_atoms)
         positions = np.random.uniform(-beam_radius, beam_radius, n_atoms)  # Инициализация позиций в пределах пучка
-        levels = np.random.choice([0, 1, 2, 3], size=n_atoms, p=[0.94, 0.05, 0.009, 0.001])  # 40% F=1, 30% F=2, 30% F=3
+        # Для тестов: все атомы в F=2
+        levels = np.random.choice([0, 1, 2, 3], size=n_atoms, p=[0.0, 1.0, 0.0, 0.0])  # 100% F=2
         T_avg_trapped = T0
         velocities_to_avg = []
         positions_to_avg = []
@@ -142,16 +143,42 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
             # Моделирование динамики с учётом влияния флуктуаций
             P_laser_eff = P_laser * (1 + np.random.normal(0, power_fluctuation))  # флуктуации мощности
             forces = np.zeros(n_atoms)
+            # Новый цикл расчёта силы и переходов между F=2 и F'=3 (по инструкции)
             for j in range(n_atoms):
-                if levels[j] == 1:  # Только уровень F=2 участвует в охлаждении
+                if levels[j] == 1:  # F=2 — только из него возможна стимуляция
+                    intensity = P_laser_eff / (pi * (beam_diameter / 2) ** 2)
+                    I_r = intensity * np.exp(-positions[j] ** 2 / beam_radius ** 2)
+                    s = I_r / I_s
+                    prob_exc = s / (1 + s + 4 * ((delta - k_L * velocities[j]) / Gamma) ** 2) * Gamma * dt
+                    # Ограничение минимальной вероятности возбуждения
+                    prob_exc = max(prob_exc, 1e-4)
+                    # Добавим вывод prob_exc и заселённости уровня F'=3
+                    if i % 1000 == 0 and j == 0:
+                        print(f"[t={t*1e6:.1f} µs] prob_exc = {prob_exc:.5f}, level = {levels[j]}")
+                        print(f"s = {s:.2f}")
+                        print(f"Заселённость возбуждённого уровня F'=3: {np.mean(levels == 2) * 100:.2f}%")
+                    if np.random.rand() < prob_exc:
+                        levels[j] = 2  # возбуждение F=2 -> F'=3
+                elif levels[j] == 2:  # F'=3 — возбуждённый уровень
+                    if np.random.rand() < Gamma * dt:
+                        levels[j] = 1  # спонтанный спад обратно на F=2
+
+            # Сила охлаждения действует только на уровне F=2
+            for j in range(n_atoms):
+                if levels[j] == 1:
                     intensity = P_laser_eff / (pi * (beam_diameter / 2) ** 2)
                     F_plus = scattering_force(velocities[j], delta, intensity, positions[j],
-                                                delta_wavelength=wavelength_fluctuation,
-                                                delta_magnetic=magnetic_fluctuation)
-                    F_minus = scattering_force(-velocities[j], delta, intensity, positions[j],
-                                                 delta_wavelength=wavelength_fluctuation,
-                                                 delta_magnetic=magnetic_fluctuation)
-                    forces[j] = F_plus + F_minus
+                                              delta_wavelength=wavelength_fluctuation,
+                                              delta_magnetic=magnetic_fluctuation)
+                    F_minus = scattering_force(velocities[j], delta, intensity, positions[j],
+                                               delta_wavelength=wavelength_fluctuation,
+                                               delta_magnetic=magnetic_fluctuation)
+                    forces[j] = F_minus - F_plus  # Сила направлена против скорости
+                    if i % 1000 == 0 and j == 0:
+                        print(f"F_minus = {F_minus:.2e}, F_plus = {F_plus:.2e}, Force = {forces[j]:.2e}")
+                else:
+                    forces[j] = 0  # на других уровнях сила не действует
+
             velocities += forces / mass_Rb * dt
             positions += velocities * dt
             boundary = 2.5 * beam_diameter
@@ -164,22 +191,22 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
             # Распределение скоростей для каждого уровня
             # Вычисление средних значений скорости для уровней
             if np.any(levels == 1):
-                avg_level_1_velocity = np.nanmean(np.where(levels == 1, velocities, np.nan))
+                avg_level_1_velocity = np.nanmean(velocities[levels == 1])
             else:
                 avg_level_1_velocity = np.nan
 
             if np.any(levels == 2):
-                avg_level_2_velocity = np.nanmean(np.where(levels == 2, velocities, np.nan))
+                avg_level_2_velocity = np.nanmean(velocities[levels == 2])
             else:
                 avg_level_2_velocity = np.nan
 
             if np.any(levels == 3):
-                avg_level_3_velocity = np.nanmean(np.where(levels == 3, velocities, np.nan))
+                avg_level_3_velocity = np.nanmean(velocities[levels == 3])
             else:
                 avg_level_3_velocity = np.nan
 
             if np.any(levels == 4):
-                avg_level_4_velocity = np.nanmean(np.where(levels == 4, velocities, np.nan))
+                avg_level_4_velocity = np.nanmean(velocities[levels == 4])
             else:
                 avg_level_4_velocity = np.nan
 
@@ -192,7 +219,7 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
             ])
 
             # Отбор только захваченных атомов, которые находятся внутри пучка (в пределах радиуса)
-            trapped_atoms = (np.abs(positions) < beam_radius) & (np.abs(velocities) < v_threshold)
+            trapped_atoms = (np.abs(positions) < beam_radius) & (np.abs(velocities) < v_threshold) & ((levels == 1) | (levels == 0))
             trapped_positions = positions[trapped_atoms]
             trapped_velocities = velocities[trapped_atoms]
 
