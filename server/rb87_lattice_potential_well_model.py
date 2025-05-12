@@ -9,8 +9,8 @@ lambda_laser = 1012e-9  # м
 omega_0 = 2 * np.pi * 296e12
 delta = 2 * np.pi * 88e12  # рад/с
 Gamma = 2 * np.pi * 3e6  # рад/с
-P = 2  # Вт
-w_0 = 243e-6  # м
+P = 20  # Вт
+w_0 = 1e-3  # м
 k_laser = 2 * np.pi / lambda_laser
 
 
@@ -25,7 +25,7 @@ def U_lattice(x: float) -> float:
     I = I_lattice(x)
     prefactor = (3 * np.pi * c ** 2 * Gamma) / (2 * omega_0 ** 3)
     U = prefactor * (1 / delta - 1 / (2 * omega_0 + delta)) * I
-    return U / (k_B * 1e-6)  # мкК
+    return U
 
 
 # --- Визуализация (debug.) ---
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(9, 4))
     plt.plot(x_vals * 1e3, U_vals, color='cyan', label='Оптическая решётка')
     plt.xlabel("x (мм)")
-    plt.ylabel("U (мкК)")
+    plt.ylabel("U (Дж)")
     plt.title("Потенциал дипольной оптической решётки")
     plt.axhline(0, color='gray', lw=0.5, ls="--")
     plt.grid(True, linestyle='--', linewidth=0.5)

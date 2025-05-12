@@ -39,7 +39,7 @@ def U_gauss(x):
     I = I_gauss(r, z)
     prefactor = (3 * np.pi * c ** 2 * Gamma) / (2 * omega_0 ** 3)
     U = prefactor * (1 / delta + 1 / (omega + delta)) * I
-    return U / (k_B * 1e-6)  # мкК
+    return U
 
 
 # --- Визуализация (debug.) ---
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(8, 5))
     plt.plot(z_vals * 1e3, U_vals, color='y')
     plt.xlabel('z (мм)')
-    plt.ylabel('U (мкК)')
+    plt.ylabel('U (Дж)')
     plt.title('Потенциал Гауссовой дипольной ловушки')
     plt.grid(True, linestyle='--', linewidth=0.5)
     plt.axvline(0, color='r', linestyle='--')

@@ -1,22 +1,27 @@
 import numpy as np
 
-from rb87_mot_model import simulate_mot, plot_results as mot_graphs
+# from rb87_mot_model import simulate_mot, plot_results as mot_graphs
 from rb87_retrap_model import simulate_retrap, plot_results as retrap_graphs
 
 # Запуск моделирования МОЛ
 
-times, positions, velocities, temperatures, avg_level_populations, avg_velocity_distributions = simulate_mot()
-mot_graphs(times, positions, velocities, temperatures, avg_level_populations, avg_velocity_distributions)
+#times, positions, velocities, temperatures, avg_level_populations, avg_velocity_distributions = simulate_mot()
+#mot_graphs(times, positions, velocities, temperatures, avg_level_populations, avg_velocity_distributions)
 
 # Сохранение данных в файлы
-np.savetxt('../results_postprocessing/mot_simulation_results/times.csv', times, delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/positions.csv', positions, delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/velocities.csv', velocities, delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/temperatures.csv', temperatures, delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/avg_level_populations.csv', avg_level_populations,
-           delimiter=',')
-np.savetxt('../results_postprocessing/mot_simulation_results/avg_velocity_distributions.csv',
-           avg_velocity_distributions, delimiter=',')
+# np.savetxt('../results_postprocessing/mot_simulation_results/times.csv', times, delimiter=',')
+# np.savetxt('../results_postprocessing/mot_simulation_results/positions.csv', positions, delimiter=',')
+# np.savetxt('../results_postprocessing/mot_simulation_results/velocities.csv', velocities, delimiter=',')
+# np.savetxt('../results_postprocessing/mot_simulation_results/temperatures.csv', temperatures, delimiter=',')
+# np.savetxt('../results_postprocessing/mot_simulation_results/avg_level_populations.csv', avg_level_populations,
+#            delimiter=',')
+# np.savetxt('../results_postprocessing/mot_simulation_results/avg_velocity_distributions.csv',
+#            avg_velocity_distributions, delimiter=',')
+
+times = np.loadtxt('../results_postprocessing/mot_simulation_results/times.csv', delimiter=',')
+positions = np.loadtxt('../results_postprocessing/mot_simulation_results/positions.csv', delimiter=',')
+velocities = np.loadtxt('../results_postprocessing/mot_simulation_results/velocities.csv', delimiter=',')
+temperatures = np.loadtxt('../results_postprocessing/mot_simulation_results/temperatures.csv', delimiter=',')
 
 # Используем финальные позиции и скорости из симуляции МОЛ
 final_positions = positions[-1]
