@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import k, c, hbar, pi
+
+mu_B = 9.274e-24  # магнетон Бора, Дж/Тл
+g_F = 0.5  # фактор Ланде (приблизительно для F=2)
+magnetic_gradient = 50.0  # Тл/м, типичный градиент
 import time
 import os
 
@@ -10,7 +14,7 @@ wavelength = 780.241e-9  # м, длина волны охлаждающего л
 k_L = 2 * pi / wavelength  # волновой вектор
 Gamma = 2 * pi * 6.07e6  # Реальное значение для рубидия-87
 delta = -Gamma / 2  # Детюнинг охлаждающего лазера в рад/с (отрицательный для охлаждения) TODO: сделать зависимой от мощности лазера и т. п.
-P_laser = 0.5  # Вт, тестовая мощность одного пучка для реалистичного s
+P_laser = 5.0  # Вт, тестовая мощность одного пучка для реалистичного s
 beam_diameter = 9e-3  # м, диаметр пучка
 I_s = 25  # Вт/м^2, насыщенность перехода
 T0 = 360.00  # К, начальная температура атомов
@@ -30,8 +34,8 @@ repumper_effect = 0.975  # коэффициент влияния репампе�
 # Параметры симуляции
 atoms_quantity = 300  # Число атомов — в реальности 500 000
 nsim = 1  # Количество симуляций
-timesim = 5e-5  # Период симуляции
-dtsim = 5e-9  # Шаг симуляции (в секундах)
+timesim = 2e-3  # Период симуляции
+dtsim = 2e-8  # Шаг симуляции (в секундах)
 itera = timesim / dtsim
 
 # Параметры переходов между уровнями (примерные значения)
@@ -54,11 +58,16 @@ def transition_between_levels(levels, temperature, dt):
     temperature - температура ловушки (средняя кинетическая энергия)
     dt - временной шаг
     """
+    temperature = max(min(temperature, 1e4), 1e-3)  # защита от переполнения
     for i in range(len(levels)):
         # Для каждого атома с вероятностью по температуре и переходам между уровнями
         for (start, end), prob in transition_probabilities.items():
             # Вычисляем вероятность перехода на основе температуры
-            transition_prob = prob * np.exp(-abs(start - end) * temperature / k) * dt
+            exponent = -abs(start - end) * temperature / k
+            if exponent < -700:
+                transition_prob = 0.0
+            else:
+                transition_prob = prob * np.exp(exponent) * dt
             if np.random.rand() < transition_prob:
                 if levels[i] == start:
                     levels[i] = end  # Переход на новый уровень
@@ -103,15 +112,18 @@ def repumper_effect_on_levels(levels, velocities, I_repumper, temperature, delta
 
 def scattering_force(v, delta, I, r, delta_wavelength=wavelength_fluctuation, delta_magnetic=magnetic_fluctuation):
     """Сила рассеяния для доплеровского охлаждения с флуктуациями в длине волны, мощности и магнитном поле."""
-    # Флуктуации длины волны
-    k_L_eff = 2 * pi / (wavelength * (1 + np.random.normal(0, delta_wavelength)))  # изменяем волновой вектор
-    s = I / I_s  # Нормированная интенсивность
-    delta_effective = delta * (1 + np.random.normal(0, delta_magnetic))  # Флуктуации магнитного поля
-
-    # Интенсивность в зависимости от радиуса r для гауссового пучка
+    # Без флуктуаций длины волны и магнитного поля
+    k_L_eff = 2 * pi / wavelength
     I_r = I * np.exp(-(r ** 2) / (beam_radius ** 2))
+    s = I_r / I_s  # Нормированная интенсивность с учётом формы пучка
+    delta_effective = delta
 
     return hbar * k_L_eff * I_r * Gamma / (2 * (1 + s + 4 * (delta_effective - k_L_eff * v) ** 2 / Gamma ** 2))
+
+
+# Детюнинг с учётом магнитного поля (Зеемановский сдвиг)
+def delta_with_magnetic(x):
+    return delta - mu_B * g_F * magnetic_gradient * x / hbar
 
 
 def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulations=nsim):
@@ -150,8 +162,6 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
                     I_r = intensity * np.exp(-positions[j] ** 2 / beam_radius ** 2)
                     s = I_r / I_s
                     prob_exc = s / (1 + s + 4 * ((delta - k_L * velocities[j]) / Gamma) ** 2) * Gamma * dt
-                    # Ограничение минимальной вероятности возбуждения
-                    prob_exc = max(prob_exc, 1e-1)
                     if np.random.rand() < prob_exc:
                         levels[j] = 2  # возбуждение F=2 -> F'=3
                 elif levels[j] == 2:  # F'=3 — возбуждённый уровень
@@ -162,15 +172,27 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
             for j in range(n_atoms):
                 if levels[j] == 1:
                     intensity = P_laser_eff / (pi * (beam_diameter / 2) ** 2)
-                    F_plus = scattering_force(velocities[j], delta, intensity, positions[j],
-                                              delta_wavelength=wavelength_fluctuation,
-                                              delta_magnetic=magnetic_fluctuation)
-                    F_minus = scattering_force(velocities[j], delta, intensity, positions[j],
-                                               delta_wavelength=wavelength_fluctuation,
-                                               delta_magnetic=magnetic_fluctuation)
+                    F_plus = scattering_force(
+                        +velocities[j],
+                        delta_with_magnetic(positions[j]),
+                        intensity,
+                        positions[j],
+                        delta_wavelength=wavelength_fluctuation,
+                        delta_magnetic=magnetic_fluctuation
+                    )
+                    F_minus = scattering_force(
+                        -velocities[j],
+                        delta_with_magnetic(positions[j]),
+                        intensity,
+                        positions[j],
+                        delta_wavelength=wavelength_fluctuation,
+                        delta_magnetic=magnetic_fluctuation
+                    )
                     forces[j] = F_minus - F_plus  # Сила направлена против скорости
                     if i % 1000 == 0 and j == 0:
                         print(f"F_minus = {F_minus:.2e}, F_plus = {F_plus:.2e}, Force = {forces[j]:.2e}")
+                        if abs(forces[j]) < 1e-23:
+                            print("⚠️ Force is too weak — cooling might be ineffective.")
                 else:
                     forces[j] = 0  # на других уровнях сила не действует
 
@@ -223,6 +245,11 @@ def simulate_mot(n_atoms=atoms_quantity, time_max=timesim, dt=dtsim, n_simulatio
                 T_avg_trapped = np.mean(mass_Rb * trapped_velocities ** 2) / k
             else:
                 T_avg_trapped = -1  # Если нет захваченных атомов, температура равна -1
+
+            # Средняя температура по всем атомам
+            T_avg_total = np.mean(mass_Rb * velocities ** 2) / k
+            if i % 1000 == 0:
+                print(f"[{t*1e6:.1f} μs] trapped: {T_avg_trapped:.5f} K, total: {T_avg_total:.5f} K")
 
             temperatures.append(T_avg_trapped)
             temperature = T_avg_trapped
